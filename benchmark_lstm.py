@@ -4,7 +4,7 @@ import tflite_runtime.interpreter as tflite
 from scipy.signal import butter, filtfilt
 import time
 from sklearn.metrics import classification_report
-from CollabData import normalize, preprocess, create_windows
+from CollabData import normalize, preprocess, create_windows, graph_signal
 import os
 
 WINDOW_SIZE = 216
@@ -116,11 +116,14 @@ def load_labeled_testing_data():
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
 
 def load_unlabeled_collab_data(filename):
-    signal, annotation_coords = preprocess(filename)
-    signal = np.array(create_windows(signal, annotation_coords)).reshape(-1, WINDOW_SIZE, 1)
+    signal, annotation_coords = preprocess(500, filename)
+    signal = np.array(create_windows(signal, annotation_coords))
+    print(signal.shape)
     labels = ['N' for i in range(signal.shape[0])]
 
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (signal, labels))
 
 
 load_unlabeled_collab_data('Kemal360hz.csv')
+load_unlabeled_collab_data('Kemal500hz.csv')
+load_unlabeled_collab_data('Kemal1300hz.csv')

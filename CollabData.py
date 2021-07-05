@@ -33,10 +33,16 @@ def normalize(data_point, max_signal_value):
     return data_point / max_signal_value
 
 
-def preprocess(filename):
+def preprocess(freq, filename):
     # Read csv into signalframe, extract signal
     df = pd.read_csv(filename)
     signal = df['Signal'].tolist()
+
+    # resample the data to change the frequency
+    time = pd.timedelta_range(0, periods=len(signal), freq=f"{1 / freq}S")
+    df = pd.DataFrame(index=time, data={'signal': signal})
+    df = df.resample(f'{1/360:.8f}S').mean() # resample frequency to 360hz
+    signal = df['signal']
 
     # scale all signal values to be between 0 and 1
     max_signal_value = max(signal)
@@ -55,12 +61,13 @@ def preprocess(filename):
     return signal, annotation_coords
 
 
-def graph_signal(annotation_coords):
+def graph_signal(signal, annotation_coords):
     """Graph the signal with the peaks"""
     plt.figure(figsize=(12, 8))
+
     # set up pyplot graph for given seconds
-    x = np.arange(1500)[400:]
-    y = signal[400:1500]
+    x = np.arange(5*360)
+    y = signal[:5*360]
 
     # label the graph
     plt.title(f"EKG Data, Kemal 360Hz ")
@@ -76,9 +83,14 @@ def graph_signal(annotation_coords):
     plt.show()
 
 def create_windows(signal, annotation_coords):
+
     windows = []
     # create windows
     for a in annotation_coords:
+        # skip signals that are too close to the end of signal
+        if abs(a[0] - len(signal)) < WINDOW_SIZE:
+            continue
+
         if WINDOW_SIZE == 360:
             window = signal[a[0] - WINDOW_SIZE // 2: a[0] + WINDOW_SIZE // 2]
         elif WINDOW_SIZE == 216:
@@ -86,7 +98,7 @@ def create_windows(signal, annotation_coords):
         else:
             print("Program not configured for this window size")
             exit(0)
-
         windows.append(window)
 
+    print(len(windows), len(windows[0]))
     return windows
