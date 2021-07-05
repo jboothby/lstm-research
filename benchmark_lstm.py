@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import numpy as np
 import pandas as pd
 import tflite_runtime.interpreter as tflite
@@ -113,3 +114,4 @@ print(data.shape, label.shape)
 
 predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
 
+=======
