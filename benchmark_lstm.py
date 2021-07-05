@@ -1,11 +1,10 @@
-
 import numpy as np
 import pandas as pd
 import tflite_runtime.interpreter as tflite
-# import tensorflow as tf
 from scipy.signal import butter, filtfilt
 import time
 from sklearn.metrics import classification_report
+from CollabData import normalize, preprocess, create_windows
 import os
 
 WINDOW_SIZE = 216
@@ -102,15 +101,26 @@ def predict_model_lite(model_path, test_data):
     print(classification_report(y_true, y_pred, zero_division=0))
 
 
+def load_labeled_testing_data():
+    # read testing data into a dataframe
+    df = pd.read_csv(os.path.join(os.getcwd(), 'testing_data.csv'))
 
-# read testing data into a dataframe
-df = pd.read_csv(os.path.join(os.getcwd(), 'testing_data.csv'))
-# take every 10th row, ignore the first columns because that's the once-hot data for the label
-data = np.array(df.iloc[::10, len(CLASSIFICATION_AHA):], dtype=np.float32)
-data = data.reshape(data.shape[0], data.shape[1], 1)
-# take every 10th row, the first columns are the once hot for the label
-label = np.array(df.iloc[::10, : len(CLASSIFICATION_AHA)])
-print(data.shape, label.shape)
+    # take every 10th row, ignore the first columns because that's the once-hot data for the label
+    data = np.array(df.iloc[::10, len(CLASSIFICATION_AHA):], dtype=np.float32)
+    data = data.reshape(data.shape[0], data.shape[1], 1)
 
-predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
+    # take every 10th row, the first columns are the once hot for the label
+    label = np.array(df.iloc[::10, : len(CLASSIFICATION_AHA)])
+    print(data.shape, label.shape)
 
+    predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
+
+def load_unlabeled_collab_data(filename):
+    signal, annotation_coords = preprocess(filename)
+    signal = np.array(create_windows(signal, annotation_coords)).reshape(-1, WINDOW_SIZE, 1)
+    labels = ['N' for i in range(signal.shape[0])]
+
+    predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (signal, labels))
+
+
+load_unlabeled_collab_data('Kemal360hz.csv')
