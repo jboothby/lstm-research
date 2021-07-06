@@ -116,10 +116,13 @@ def load_labeled_testing_data():
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
 
 def load_unlabeled_collab_data(freq, filename):
+    start = time.time()
     signal, annotation_coords = preprocess(freq, filename)
     signal = np.array(create_windows(signal, annotation_coords))
     print(signal.shape)
     labels = ['N' for i in range(signal.shape[0])]
+    elapsed = time.time() - start
+    print(f'Preprocessing took {elapsed} seconds, or {elapsed/signal.shape[0]} seconds per record')
 
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (signal, labels))
 
