@@ -115,8 +115,8 @@ def load_labeled_testing_data():
 
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
 
-def load_unlabeled_collab_data(filename):
-    signal, annotation_coords = preprocess(500, filename)
+def load_unlabeled_collab_data(freq, filename):
+    signal, annotation_coords = preprocess(freq, filename)
     signal = np.array(create_windows(signal, annotation_coords))
     print(signal.shape)
     labels = ['N' for i in range(signal.shape[0])]
@@ -124,6 +124,6 @@ def load_unlabeled_collab_data(filename):
     predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (signal, labels))
 
 
-load_unlabeled_collab_data('Kemal360hz.csv')
-load_unlabeled_collab_data('Kemal500hz.csv')
-load_unlabeled_collab_data('Kemal1300hz.csv')
+load_unlabeled_collab_data(360, 'Kemal360hz.csv')
+load_unlabeled_collab_data(500, 'Kemal500hz.csv')
+load_unlabeled_collab_data(1300, 'Kemal1300hz.csv')

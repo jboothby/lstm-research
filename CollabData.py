@@ -38,11 +38,19 @@ def preprocess(freq, filename):
     df = pd.read_csv(filename)
     signal = df['Signal'].tolist()
 
+    # plt.figure(figsize=(12,8))
+    # plt.title(f'Kemal {freq}hz raw signal downsampled to 360hz')
+    # plt.plot(np.linspace(0,1,freq), signal[:freq], '-r', label='raw')
+
     # resample the data to change the frequency
-    time = pd.timedelta_range(0, periods=len(signal), freq=f"{1 / freq}S")
+    time = pd.timedelta_range(0, periods=len(signal), freq=f"{(1/freq):.8f}S")
     df = pd.DataFrame(index=time, data={'signal': signal})
     df = df.resample(f'{1/360:.8f}S').mean() # resample frequency to 360hz
     signal = df['signal']
+
+    # plt.plot(np.linspace(0,1,360), signal[:360], '-b', label='downsampled')
+    # plt.legend()
+    # plt.show()
 
     # scale all signal values to be between 0 and 1
     max_signal_value = max(signal)
@@ -100,5 +108,4 @@ def create_windows(signal, annotation_coords):
             exit(0)
         windows.append(window)
 
-    print(len(windows), len(windows[0]))
     return windows
