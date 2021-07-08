@@ -175,12 +175,14 @@ def annotation_map(label):
         """
 
 
+
 def annotation_map(n):
     if n in list(CLASSIFICATION.keys()):
         n = n
     else:
         n = 'Z'
     return CLASSIFICATION[n]
+
 
 
 def butter_filter(signal, lowcut, highcut, order=3):
@@ -265,14 +267,14 @@ class Data:
         print(f"Filtering took {stop - start} seconds ({(stop - start) / vX.shape[0]} per window)")
 
         filename = 'history.csv'
-        history_logger = tf.keras.callbacks.CSVLogger(filename, separator=',', append=True)
-        out_batch = NBatchLogger(display=BATCH_LOG_SIZE)
+        # history_logger = tf.keras.callbacks.CSVLogger(filename, separator=',', append=True)
+        # out_batch = NBatchLogger(display=BATCH_LOG_SIZE)
         history = self.model.fit(X, Y, validation_data=[vX, vY],
                                  epochs=EPOCHS, verbose=VERBOSE,
-                                 batch_size=BATCH_SIZE, shuffle=True,
-                                 callbacks=[out_batch, history_logger])
+                                 batch_size=BATCH_SIZE, shuffle=True)
+                                 #callbacks=[out_batch, history_logger])
 
-        self.model.save(f'LSTM_D{DENSE_LAYERS}_L{LSTM_LAYERS}_STEP{WINDOW_STEP}_Stratified.h5')
+        self.model.save(f'LSTM_D{DENSE_LAYERS}_L{LSTM_LAYERS}_STEP{WINDOW_STEP}_FullClassification.h5')
 
         print(f"\nLoss: {history.history['loss']}")
         print(f"Val loss: {history.history['val_loss']}\n")
@@ -371,12 +373,12 @@ def predict_model(model_name, test_data, has_label=True, lite=False):
         print(results)
 
 
-def create_lite_model(path, data):
+def create_lite_model(path):
     # create data generator for representative data
-    def representative_data_gen():
-        # yield every 100th data point, should result in ~620 points
-        for i in range(0, data.shape[0], 100):
-            yield data[i].reshape(1, WINDOW_SIZE, 1)
+    # def representative_data_gen():
+    #     # yield every 100th data point, should result in ~620 points
+    #     for i in range(0, data.shape[0], 100):
+    #         yield data[i].reshape(1, WINDOW_SIZE, 1)
 
     model = tf.keras.models.load_model(path)
 
@@ -387,12 +389,12 @@ def create_lite_model(path, data):
     print(f'Converting model {filename} to TF lite model')
     # create lite model if available
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(path)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_data_gen
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.uint8
-    converter.inference_output_type = tf.uint8
+    # converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(path)
+    # converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    # converter.representative_dataset = representative_data_gen
+    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    # converter.inference_input_type = tf.uint8
+    # converter.inference_output_type = tf.uint8
 
     tflite_model = converter.convert()
 
@@ -443,7 +445,7 @@ def saved_model_convert(h5_path):
 
 
 def main():
-    data = Data()
+    # data = Data()
 
     # data.train_model()
     # evaluate_model('LSTM_D45_L23_STEP1_Stratified.h5', data.test)
@@ -451,16 +453,14 @@ def main():
     # predict_model("LSTM_D45_L23_STEP1_Stratified.h5", process_collab_data(), has_label=False, lite=False)
     # saved_model_convert("LSTM_D45_L23_STEP1_Stratified.h5")
     # create_lite_model(os.path.join(os.getcwd(),"LSTM_D45_L23_STEP1_Stratified.h5"), data.train)
-    # create_lite_model('LSTM_64_32.h5')
+    create_lite_model('LSTM_D90_L45_stratified.h5')
 
-    pd.DataFrame(data.test[0].reshape(-1, WINDOW_SIZE)).iloc[::50, :].to_csv('representative_data.csv', index=False)
+    # pd.DataFrame(data.test[0].reshape(-1, WINDOW_SIZE)).iloc[::50, :].to_csv('representative_data.csv', index=False)
 
-"""
-    print(f'label: {data.test[1].shape}, data: {data.test[0].shape}')
-    test_data = np.concatenate((data.test[1], data.test[0].reshape(-1, WINDOW_SIZE)), axis=1)
-    print(test_data.shape)
-    pd.DataFrame(test_data).to_csv('testing_data_360.csv', index=False)
-    """
+    # print(f'label: {data.test[1].shape}, data: {data.test[0].shape}')
+    # test_data = np.concatenate((data.test[1], data.test[0].reshape(-1, WINDOW_SIZE)), axis=1)
+    # print(test_data.shape)
+    # pd.DataFrame(test_data).to_csv('testing_data_newModel.csv', index=False)
 
 
 main()

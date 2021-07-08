@@ -4,7 +4,7 @@ import tflite_runtime.interpreter as tflite
 from scipy.signal import butter, filtfilt
 import time
 from sklearn.metrics import classification_report
-from CollabData import normalize, preprocess, create_windows, graph_signal
+from CollabData import DataProcessor
 import os
 
 WINDOW_SIZE = 216
@@ -18,11 +18,7 @@ CLASSIFICATION_FULL = {'N': 0, 'L': 1, 'R': 2, 'B': 3, 'A': 4, 'a': 5, 'J': 6, '
                        'r': 9, 'F': 10, 'e': 11, 'j': 12, 'n': 13, 'E': 14, '/': 15, 'f': 16, 'Z': 17}
 CLASSIFICATION_AHA = {'N': 0, 'V': 1, 'F': 2, 'E': 3, 'Q': 4, 'O': 5, 'P': 6, 'Z': 7}
 
-
-if WINDOW_SIZE == 360:
-    CLASSIFICATION = CLASSIFICATION_FULL
-else:
-    CLASSIFICATION = CLASSIFICATION_AHA
+CLASSIFICATION = CLASSIFICATION_FULL
 
 
 def annotation_full_to_aha_map(label):
@@ -49,10 +45,6 @@ def reverse_onceHot(n):
     return list(CLASSIFICATION.keys())[temp]
 
 
-def reverse_classification(n):
-    return list(CLASSIFICATION.keys())[n]
-
-
 def predict_model_lite(model_path, test_data):
     sum = 0  # total time elapsed
     count = 0  # count how many signals processed
@@ -63,7 +55,6 @@ def predict_model_lite(model_path, test_data):
     signals = test_data[0]
     labels = test_data[1]
 
-    # model = tf.keras.models.load_model(model_name)
     interpreter = tflite.Interpreter(model_path)
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
@@ -98,35 +89,55 @@ def predict_model_lite(model_path, test_data):
 
     print(list(CLASSIFICATION.keys()))
 
+    y_true_map = {}
+    for label in y_true:
+        if label not in y_true_map.keys():
+            y_true_map[label] = 1
+        else:
+            y_true_map[label] = y_true_map[label] + 1
+
+    y_pred_map = {}
+    for label in y_pred:
+        if label not in y_pred_map.keys():
+            y_pred_map[label] = 1
+        else:
+            y_pred_map[label] = y_pred_map[label] + 1
+
+    print(f'True labels: {y_true_map}\n Predicted Labels: {y_pred_map}')
+
     print(classification_report(y_true, y_pred, zero_division=0))
 
 
-def load_labeled_testing_data():
+def load_labeled_testing_data(model_path, data_path):
     # read testing data into a dataframe
-    df = pd.read_csv(os.path.join(os.getcwd(), 'testing_data.csv'))
+    df = pd.read_csv(os.path.join(os.getcwd(), data_path))
 
     # take every 10th row, ignore the first columns because that's the once-hot data for the label
-    data = np.array(df.iloc[::10, len(CLASSIFICATION_AHA):], dtype=np.float32)
+    data = np.array(df.iloc[::10, len(CLASSIFICATION):], dtype=np.float32)
     data = data.reshape(data.shape[0], data.shape[1], 1)
 
     # take every 10th row, the first columns are the once hot for the label
-    label = np.array(df.iloc[::10, : len(CLASSIFICATION_AHA)])
+    label = np.array(df.iloc[::10, : len(CLASSIFICATION)])
     print(data.shape, label.shape)
 
-    predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (data, label))
+    predict_model_lite(model_path, (data, label))
 
-def load_unlabeled_collab_data(freq, filename):
+
+def load_unlabeled_collab_data(freq, model_path, data_path):
     start = time.time()
-    signal, annotation_coords = preprocess(freq, filename)
-    signal = np.array(create_windows(signal, annotation_coords))
+    processor = DataProcessor(WINDOW_SIZE, HIGHCUT, LOWCUT, ORDER, FS)
+    signal, annotation_coords = processor.preprocess(freq, data_path)
+    signal = np.array(processor.create_windows(signal, annotation_coords))
     print(signal.shape)
     labels = ['N' for i in range(signal.shape[0])]
     elapsed = time.time() - start
-    print(f'Preprocessing took {elapsed} seconds, or {elapsed/signal.shape[0]} seconds per record')
+    print(f'Preprocessing took {elapsed} seconds, or {elapsed / signal.shape[0]} seconds per record')
 
-    predict_model_lite('LSTM_D45_L23_STEP1_Stratified.tflite', (signal, labels))
+    predict_model_lite(model_path, (signal, labels))
 
 
-load_unlabeled_collab_data(360, 'Kemal360hz.csv')
-load_unlabeled_collab_data(500, 'Kemal500hz.csv')
-load_unlabeled_collab_data(1300, 'Kemal1300hz.csv')
+load_unlabeled_collab_data(360, 'LSTM_D90_L45_stratified.tflite', 'Kemal360hz.csv')
+load_unlabeled_collab_data(500, 'LSTM_D90_L45_stratified.tflite', 'Kemal500hz.csv')
+load_unlabeled_collab_data(1300, 'LSTM_D90_L45_stratified.tflite', 'Kemal1300hz.csv')
+
+load_labeled_testing_data('LSTM_D90_L45_stratified.tflite', 'testing_data_D90-L45-stratified.csv')
