@@ -1,0 +1,18 @@
+﻿,,,,Tensorflow Full,,Tensorflow Lite Testing Data,,Tensorflow Lite Kemal 360hz,,,Tensorflow Lite Kemal 500hz,,,Tensorflow Lite Kemal 1300hz,,,,,,,
+,,,,Accuracy,Time per record [Seconds],Accuracy,Time per record[S],Accuracy (assuming normal),Inference Per Record [S],Preprocessing per record [S],Accuracy (assuming normal),Inference Per Record [S],Preprocessing per record [S],Accuracy (assuming normal),Inference Per Record [S],Preprocessing per record [S],,,,,
+Ryzen 5 3600,,,,0.98,0.03699,0.98,0.0034,1,0.0033,0.0027,0.99,0.0034,0.0021,1,0.0037,0.0022,,,,,
+Raspberry Pi 4,,,,N/A,N/A,0.98,0.017,1,0.0171,0.01369,0.99,0.0173,0.01300,1,0.0172,0.01337,,,,,
+Raspberry Pi 3,,,,N/A,N/A,0.98,0.0488,,,,,,,,,,,,,,
+Jetson Nano CPU,,,,N/A,N/A,0.98,0.0184,1,0.0184,0.0159,0.99,0.0189,0.0137,1,0.0185,0.0135,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,
+Raspberry Pi 4,,,,,,,,,,,,,,,,,,,,,
+D90-L45 MIT-18,,,,,,,,,,,,,,,,,,,,,
+,,,,N [Actual/Predicted],L,R,B,A,a,J,S,V,r,F,e,j,n,E,/,f,Z
+,Accuracy,Preprocessing [S] per record,Inference [S] per record,1871/1903,192/191,216/219,0/0,56/49,7/2,3/0,0/0,166/154,0/0,17/13,0/0,8/5,0/0,3/3,91,5/3,0/0
+2700 Test Data,0.97,N/A,0.0255,,,,,,,,,,,,,,,,,,
+Kemal 360hz,Unk,0.01412,0.0261,67,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,0
+Kemal 500hz,Unk,0.01324,0.0255,68,0,0,0,17,0,0,0,0,0,0,0,0,0,0,0,0,0
+Kemal 1300hz,Unk,0.01324,0.0255,73,0,0,0,19,,,,,,,,,,,,,
