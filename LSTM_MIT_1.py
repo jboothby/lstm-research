@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split as Split
 from sklearn.metrics import classification_report
 import time
 import ecgdetectors
+from benchmark_lstm import load_binary_testing_data
 
 tf.enable_v2_behavior()
 
@@ -318,18 +319,15 @@ def evaluate_model(model_name, test_data):
     print(f'Evaluation: {evaluation_history}')
 
 
-def predict_model(model_name, test_data, has_label=True, lite=False):
+def predict_model(model_name, test_data, test_labels):
     sum = 0  # total time elapsed
     count = 0  # count how many signals processed
     y_true = []  # the true classification of each signal
     y_pred = []  # model prediction classification of each signal
     b, a = butter(ORDER, [LOWCUT / (FS / 2), HIGHCUT / (FS / 2)], "band")
 
-    if has_label:
-        signals = test_data[0]
-        labels = test_data[1]
-    else:
-        signals = test_data
+    signals = test_data
+    labels = test_labels
 
     model = tf.keras.models.load_model(model_name)
 
@@ -344,8 +342,8 @@ def predict_model(model_name, test_data, has_label=True, lite=False):
         if has_label:
             y_true.append(labels[x])  # record the true label
 
-        temp = np.argmax(model.predict(window.reshape(1, WINDOW_SIZE, 1)))
-        y_pred.append(list(CLASSIFICATION.keys())[temp])
+        temp = np.argmax(model.predict(window.reshape(1, WINDOW_SIZE)))
+        y_pred.append(temp)
 
         stop = time.time()
         sum += stop - start
@@ -355,46 +353,54 @@ def predict_model(model_name, test_data, has_label=True, lite=False):
 
     print(f'Average run time for each record: {sum / count}')
 
-    if has_label:
-        y_true = np.array(list(map(reverse_onceHot, y_true)))
+    # if has_label:
+    #     y_true = np.array(list(map(reverse_onceHot, y_true)))
 
-    print(list(CLASSIFICATION.keys()))
+    # print(list(CLASSIFICATION.keys()))
 
     if has_label:
         print(classification_report(y_true, y_pred, zero_division=0))
-    else:
-        results = {}
-        for val in y_pred:
-            if val not in results:
-                results[val] = 1
-            else:
-                results[val] += 1
 
-        print(results)
+    results = {}
+    for val in y_pred:
+        if val not in results:
+            results[val] = 1
+        else:
+            results[val] += 1
+
+    print(results)
 
 
 def create_lite_model(path):
     # create data generator for representative data
-    # def representative_data_gen():
-    #     # yield every 100th data point, should result in ~620 points
-    #     for i in range(0, data.shape[0], 100):
-    #         yield data[i].reshape(1, WINDOW_SIZE, 1)
+    def representative_data_gen():
+        # read testing data into a dataframe
+        df = pd.read_csv(os.path.join(os.getcwd(), 'testing_data_D128x3-stratified.csv'))
+        # take every 10th row, ignore the first columns because that's the once-hot data for the label
+        data = np.array(df.iloc[::1, 1:], dtype=np.float32)
+        print(data.shape)
+        print(data[0].shape)
+
+        # yield every 100th data point, should result in ~540 points
+        for i in range(0, data.shape[0], 50):
+            yield [data[i]]
+
+    representative_data_gen()
 
     model = tf.keras.models.load_model(path)
 
     # create filename for saving lite model
     filename = os.path.splitext(os.path.basename(path))[0]
-    lite_path = os.path.join(os.getcwd(), filename) + '.tflite'
+    lite_path = os.path.join(os.getcwd(), filename) + 'quantized' + '.tflite'
 
     print(f'Converting model {filename} to TF lite model')
     # create lite model if available
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    # converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file(path)
-    # converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    # converter.representative_dataset = representative_data_gen
-    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    # converter.inference_input_type = tf.uint8
-    # converter.inference_output_type = tf.uint8
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_data_gen
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
 
     tflite_model = converter.convert()
 
@@ -441,19 +447,24 @@ def process_collab_data():
 
 def saved_model_convert(h5_path):
     model = tf.keras.models.load_model(h5_path)
-    tf.saved_model.save(model, 'D45_L23_SavedModel')
+    print(model.summary())
+    # tf.saved_model.save(model, 'D45_L23_SavedModel')
 
 
 def main():
-    # data = Data()
+    data = Data()
 
-    # data.train_model()
+    data.train_model()
     # evaluate_model('LSTM_D45_L23_STEP1_Stratified.h5', data.test)
     # predict_model("LSTM_D45_L23_STEP1_Stratified.h5", data.test)
     # predict_model("LSTM_D45_L23_STEP1_Stratified.h5", process_collab_data(), has_label=False, lite=False)
     # saved_model_convert("LSTM_D45_L23_STEP1_Stratified.h5")
     # create_lite_model(os.path.join(os.getcwd(),"LSTM_D45_L23_STEP1_Stratified.h5"), data.train)
-    create_lite_model('LSTM_D90_L45_stratified.h5')
+    # create_lite_model('LSTM_D90_L45_stratified.h5')
+    # create_lite_model('LSTM_D128x3_BinaryClassifcation.h5')
+    # saved_model_convert('LSTM_D90_L45_stratified.h5')
+    # data, labels = load_binary_testing_data('testing_data_D128x3-stratified.csv')
+    # predict_model('LSTM_D128x3_BinaryClassification.h5', data, labels)
 
     # pd.DataFrame(data.test[0].reshape(-1, WINDOW_SIZE)).iloc[::50, :].to_csv('representative_data.csv', index=False)
 
