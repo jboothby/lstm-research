@@ -25,27 +25,33 @@ def reverse_onceHot(n):
 
 
 class Benchmark:
-    y_true = []
-    y_pred = []
     b, a = butter(ORDER, [LOWCUT / (FS / 2), HIGHCUT / (FS / 2)], "band")
-    summary = {}
 
-    def __init__(self, model_path, data_path, binary_classification=False, quantized=False):
+    def __init__(self, model_path, uses_binary_classification=False):
         self.model_path = model_path
-        self.data_path = data_path
-        self.binary_classification = binary_classification
-        self.quantized = quantized
+        self.window_shape = (-1, WINDOW_SIZE) if uses_binary_classification else (-1, WINDOW_SIZE, 1)
+
+        self.uses_binary_classification = uses_binary_classification
+
+        if uses_binary_classification:
+            self.inference_to_pred = self.binaryclass_inference_to_pred
+        else:
+            self.inference_to_pred = self.multiclass_inference_to_pred
+
+    def set_data_props(self, data_path, quantized=False, freq=None,
+                       is_unlabeled_collab_data=False):
         self.sum = 0
         self.count = 0
+        self.time_elapsed = 0
+        self.preprocessing_time = None
 
+        self.data_path = data_path
         self.data_type = 'uint8' if quantized else 'float32'
-        self.window_shape = (-1, WINDOW_SIZE) if binary_classification else (-1, WINDOW_SIZE, 1)
-        self.inference_to_pred = \
-            self.binaryclass_inference_to_pred if binary_classification \
-                else self.multiclass_inference_to_pred
+        self.signals, self.labels = self.load_testing_data(freq, is_unlabeled_collab_data)
 
-        if binary_classification:
-            self.signals, self.labels = self.load_binary_testing_data()
+        self.y_pred = []
+        self.y_true = []
+        self.summary = {}
 
     @staticmethod
     def multiclass_inference_to_pred(x):
@@ -63,11 +69,13 @@ class Benchmark:
         input_details = interpreter.get_input_details()[0]['index']
         output_details = interpreter.get_output_details()[0]['index']
 
+        time_elapsed = 0
         for x in range(self.signals.shape[0]):
             self.count += 1
             start = time.time()
 
             window = filtfilt(self.b, self.a, self.signals[x].flatten())
+
             interpreter.set_tensor(input_details, window.reshape(self.window_shape).astype(self.data_type))
             interpreter.invoke()
 
@@ -75,22 +83,28 @@ class Benchmark:
             self.y_pred.append(self.inference_to_pred(interpreter.get_tensor(output_details)))
 
             stop = time.time()
-            self.sum += stop - start
+            self.time_elapsed += stop - start
 
             if x % 1000 == 0:
-                print(f"Predicted {x}/{self.signals.shape[0]} classifications in {self.sum:.2f} seconds")
+                print(f"Predicted {x}/{self.signals.shape[0]} classifications in {self.time_elapsed:.2f} seconds")
                 print(f"Estimated time remaining: \
-                 {((((self.sum / self.count) * self.signals.shape[0]) - self.sum) / 60):.2f} minutes")
+                 {((((self.time_elapsed / self.count) * self.signals.shape[0]) - self.time_elapsed) / 60):.2f} minutes")
 
-        if not self.binary_classification:
+
+        if not self.uses_binary_classification:
             self.y_true = list(map(reverse_onceHot, self.y_true))
 
+        self.summarize()
+
+        return self.summary
+
     def summarize(self):
-        avg_run_time = round(self.sum / self.count, 6)
+        avg_run_time = round(self.time_elapsed / self.count, 6)
         print(f'Average run time for each record: {avg_run_time}')
 
         results = {}
         for t, p in zip(self.y_true, self.y_pred):
+            t = str(t)
             if t not in results.keys():
                 results[t] = {p: 1}
             if p not in results[t].keys():
@@ -100,90 +114,77 @@ class Benchmark:
 
         self.summary['data'] = results
 
-        sum = 0
         for key, val in results.items():
+            number_of_this_value = 0
             for v in val.values():
-                sum += v
-            print(f'True: {key}, Total: {sum}, Predicted: {val}')
+                number_of_this_value += v
+                self.sum += v
+            print(f'True: {key}, Total: {number_of_this_value}, Predicted: {val}')
 
         self.summary['total-values'] = self.sum
         self.summary['time-per-infer'] = avg_run_time
+
+        if self.preprocessing_time is not None:
+            self.summary['time-per-preprocess'] = self.preprocessing_time
+
         self.summary['accuracy'] = \
-            classification_report(self.y_true, self.y_pred, zero_division=0, output_dict=True)['accuracy']
+            round(classification_report(self.y_true, self.y_pred, zero_division=0, output_dict=True)['accuracy'], 6)
 
         print(classification_report(self.y_true, self.y_pred, zero_division=0))
 
-        return self.summary
+    def load_testing_data(self, freq=None, is_unlabeled_collab_data=False):
 
-    # def load_labeled_testing_data(self):
-    #     # read testing data into a dataframe
-    #     df = pd.read_csv(os.path.join(os.getcwd(), data_path))
-    #
-    #     # take every 10th row, ignore the first columns because that's the once-hot data for the label
-    #     data = np.array(df.iloc[::100, len(CLASSIFICATION):], dtype=np.float32)
-    #     data = data.reshape(data.shape[0], data.shape[1], 1)
-    #
-    #     # take every 10th row, the first columns are the once hot for the label
-    #     label = np.array(df.iloc[::100, : len(CLASSIFICATION)])
-    #
-    #     if convert_to_binary:
-    #         label = np.array(list(map(reverse_onceHot, label)))
-    #         label = np.array(list(map(lambda x: 1 if x == 'N' else 0, label)))
-    #
-    #     print(data.shape, label.shape)
-    #
-    #     return data, label
-    #
-    # # return predict_model_lite(model_path, (data, label))
-    #
-    # def load_unlabeled_collab_data(self):
-    #     start = time.time()
-    #     processor = DataProcessor(WINDOW_SIZE, HIGHCUT, LOWCUT, ORDER, FS)
-    #     signal, annotation_coords = processor.preprocess(freq, data_path)
-    #     signal = np.array(processor.create_windows(signal, annotation_coords))
-    #     print(signal.shape)
-    #     labels = ['N' for i in range(signal.shape[0])]
-    #     elapsed = time.time() - start
-    #     time_per_preprocess = round(elapsed / signal.shape[0], 5)
-    #     print(f'Preprocessing took {elapsed} seconds, or {time_per_preprocess} seconds per record')
-    #
-    #     summary = predict_model_lite(model_path, (signal, labels))
-    #     summary['time-per-preprocess'] = time_per_preprocess
-    #     return summary
+        assert (not is_unlabeled_collab_data or freq is not None)
 
-    def load_binary_testing_data(self):
+        if is_unlabeled_collab_data:
+            start = time.time()
+
+            processor = DataProcessor(WINDOW_SIZE, HIGHCUT, LOWCUT, ORDER, FS)
+            raw_signal, annotation_coords = processor.preprocess(freq, self.data_path)
+
+            data = np.array(processor.create_windows(raw_signal, annotation_coords))
+            label = np.array([1 for i in range(data.shape[0])])
+
+            time_elapsed = time.time() - start
+            time_per_preprocess = round(time_elapsed / data.shape[0], 5)
+
+            self.preprocessing_time = time_per_preprocess
+            print(f'Preprocessing took {time_elapsed} seconds, or {time_per_preprocess} seconds per record')
+
+            return data, label
+
         # read testing data into a dataframe
         df = pd.read_csv(os.path.join(os.getcwd(), self.data_path))
 
         data = np.array(df.iloc[::1, 1:], dtype=np.float32)
         data = data.reshape(data.shape[0], data.shape[1])
+        label = np.array(df.iloc[::1, : 1], dtype=int)
 
-        label = np.array(df.iloc[::1, : 1])
         print(data.shape, label.shape)
         return data, label
 
 
-benchmark = Benchmark('LSTM_D128x3_BinaryClassifcation.tflite', 'testing_data_D128x3-stratified.csv',
-                      binary_classification=True)
-benchmark.begin_inference_lite()
-benchmark.summarize()
+def main():
+    computer_name = "PC"
+    json_summary_object = {}
 
-# TODO: Figure out why this part is not returning 0<= value <= 1
-# benchmark = Benchmark('LSTM_D128x3_BinaryClassifcationquantized.tflite', 'testing_data_D128x3-stratified.csv',
-#                       binary_classification=True, quantized=True)
-# benchmark.begin_inference_lite()
-# benchmark.summarize()
+    bench = Benchmark('LSTM_D128x3_BinaryClassifcation.tflite', uses_binary_classification=True)
 
-# data, label = load_labeled_testing_data('testing_data_D90-L45-stratified.csv')
-# benchmark = Benchmark('LSTM_D90_L45_stratified.tflite', data, label)
-# benchmark.begin_inference()
+    bench.set_data_props(data_path='testing_data_D128x3-stratified.csv')
+    json_summary_object['Testing'] = bench.begin_inference_lite()
 
-# summary = {}
-# summary['Kemal360hz'] = load_unlabeled_collab_data(360, 'LSTM_D90_L45_stratified.tflite', 'Kemal360hz.csv')
-# summary['Kemal500hz'] = load_unlabeled_collab_data(500, 'LSTM_D90_L45_stratified.tflite', 'Kemal500hz.csv')
-# summary['Kemal1300hz'] = load_unlabeled_collab_data(1300, 'LSTM_D90_L45_stratified.tflite', 'Kemal1300hz.csv')
-# summary['Testing Data'] = load_labeled_testing_data('LSTM_D90_L45_stratified.tflite',
-#                                                     'testing_data_D90-L45-stratified.csv')
-#
-# with open('inference-summary.json', 'w') as outfile:
-#     json.dump(summary, outfile, indent=2)
+    bench.set_data_props(data_path='Kemal360hz.csv', freq=360, is_unlabeled_collab_data=True)
+    json_summary_object['Kemal 360Hz'] = bench.begin_inference_lite()
+
+    bench.set_data_props(data_path='Kemal500hz.csv', freq=500, is_unlabeled_collab_data=True)
+    json_summary_object['Kemal 500Hz'] = bench.begin_inference_lite()
+
+    bench.set_data_props(data_path='Kemal1300hz.csv', freq=1300, is_unlabeled_collab_data=True)
+    json_summary_object['Kemal 1300'] = bench.begin_inference_lite()
+
+    with open(f'inference-summary-binary-{computer_name}.json', 'w') as f:
+        json.dump(json_summary_object, f, indent=2)
+
+
+if __name__ == "__main__":
+    main()
