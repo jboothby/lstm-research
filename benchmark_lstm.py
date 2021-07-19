@@ -165,7 +165,7 @@ class Benchmark:
 
 
 def main():
-    computer_name = "PC"
+    computer_name = "jetson"
     json_summary_object = {}
 
     bench = Benchmark('LSTM_D128x3_BinaryClassifcation.tflite', uses_binary_classification=True)
