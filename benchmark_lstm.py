@@ -7,6 +7,7 @@ from sklearn.metrics import classification_report
 from CollabData import DataProcessor
 import os
 import json
+import sys
 
 WINDOW_SIZE = 216
 HIGHCUT = 40  # allow frequencies below this rate (filters 50/60hz main noise)
@@ -164,8 +165,9 @@ class Benchmark:
         return data, label
 
 
-def main():
-    computer_name = "jetson"
+def main(name_of_caller = 'PC'):
+    computer_name = name_of_caller
+
     json_summary_object = {}
 
     bench = Benchmark('LSTM_D128x3_BinaryClassifcation.tflite', uses_binary_classification=True)
@@ -187,4 +189,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
