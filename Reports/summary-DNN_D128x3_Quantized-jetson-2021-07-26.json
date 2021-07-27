@@ -1,0 +1,53 @@
+{
+  "Testing": {
+    "data": {
+      "1": {
+        "1": 18088,
+        "0": 598
+      },
+      "0": {
+        "0": 8142,
+        "1": 181
+      }
+    },
+    "total-values": 27009,
+    "time-per-infer": 0.000904,
+    "accuracy": 0.971156
+  },
+  "Kemal360": {
+    "data": {
+      "1": {
+        "1": 55,
+        "0": 22
+      }
+    },
+    "total-values": 77,
+    "time-per-infer": 0.000909,
+    "time-per-preprocess": 0.01389,
+    "accuracy": 0.710526
+  },
+  "Kemal500": {
+    "data": {
+      "1": {
+        "1": 69,
+        "0": 17
+      }
+    },
+    "total-values": 86,
+    "time-per-infer": 0.000906,
+    "time-per-preprocess": 0.01294,
+    "accuracy": 0.8
+  },
+  "Kemal1300": {
+    "data": {
+      "1": {
+        "1": 86,
+        "0": 7
+      }
+    },
+    "total-values": 93,
+    "time-per-infer": 0.000906,
+    "time-per-preprocess": 0.0133,
+    "accuracy": 0.923913
+  }
+}
