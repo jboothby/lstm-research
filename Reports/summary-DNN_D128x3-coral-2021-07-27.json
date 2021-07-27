@@ -11,7 +11,7 @@
       }
     },
     "total-values": 27009,
-    "time-per-infer": 0.000896,
+    "time-per-infer": 0.000903,
     "accuracy": 1
   },
   "Kemal360": {
@@ -22,8 +22,8 @@
       }
     },
     "total-values": 77,
-    "time-per-infer": 0.000907,
-    "time-per-preprocess": 0.02154,
+    "time-per-infer": 0.000913,
+    "time-per-preprocess": 0.02147,
     "accuracy": 1
   },
   "Kemal500": {
@@ -34,8 +34,8 @@
       }
     },
     "total-values": 86,
-    "time-per-infer": 0.000901,
-    "time-per-preprocess": 0.0207,
+    "time-per-infer": 0.000907,
+    "time-per-preprocess": 0.02065,
     "accuracy": 1
   },
   "Kemal1300": {
@@ -46,8 +46,8 @@
       }
     },
     "total-values": 93,
-    "time-per-infer": 0.000904,
-    "time-per-preprocess": 0.02069,
+    "time-per-infer": 0.000907,
+    "time-per-preprocess": 0.02062,
     "accuracy": 1
   }
 }
